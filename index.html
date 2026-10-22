@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Sıla - Neon Yılan PWA</title>
+    <meta name="theme-color" content="#0d0e15">
+
+    <!-- Mobil & PWA İkon Tanımlamaları -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Neon Yılan">
+
+    <!-- Dinamik PWA Manifest -->
+    <script>
+        const manifestData = {
+            "name": "Neon Yılan - Sıla PWA",
+            "short_name": "NeonYılan",
+            "start_url": "./index.html",
+            "display": "standalone",
+            "background_color": "#0d0e15",
+            "theme_color": "#0d0e15",
+            "icons": [
+                {
+                    "src": "icon.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                },
+                {
+                    "src": "icon.png",
+                    "sizes": "512x512",
+                    "type": "image/png"
+                }
+            ]
+        };
+        const blobManifest = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = URL.createObjectURL(blobManifest);
+        document.head.appendChild(link);
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #0d0e15;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.8s ease;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            color: #00ffcc;
+            text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
+            letter-spacing: 2px;
+            transition: color 0.8s, text-shadow 0.8s;
+        }
+
+        p.subtitle {
+            font-size: 0.85rem;
+            color: #ff007f;
+            text-shadow: 0 0 5px #ff007f;
+        }
+
+        /* Akıllı Cihaz İndirme Alanı */
+        .pwa-tools {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .dynamic-install-btn {
+            background: rgba(255, 0, 127, 0.25);
+            border: 1px solid #ff007f;
+            color: #fff;
+            padding: 8px 18px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 0, 127, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .dynamic-install-btn:hover {
+            background: rgba(255, 0, 127, 0.5);
+            transform: scale(1.03);
+        }
+
+        .score-board {
+            display: flex;
+            gap: 10px;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .score-box {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 6px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.1);
+            backdrop-filter: blur(5px);
+        }
+
+        #game-container {
+            position: relative;
+        }
+
+        canvas {
+            background-color: #12131c;
+            border: 2px solid #00ffcc;
+            border-radius: 16px;
+            box-shadow: 0 0 25px rgba(0, 255, 204, 0.4);
+            display: block;
+            transition: border-color 0.8s, box-shadow 0.8s, background-color 0.8s;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(13, 14, 21, 0.88);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        .start-btn {
+            background: #00ffcc;
+            color: #0d0e15;
+            border: none;
+            padding: 12px 28px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 0 15px #00ffcc;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .start-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 25px #00ffcc;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3, 55px);
+            grid-template-rows: repeat(2, 55px);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            background: #1a1c29;
+            border: 1px solid #ff007f;
+            color: #ff007f;
+            font-size: 1.3rem;
+            border-radius: 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 8px rgba(255, 0, 127, 0.3);
+            cursor: pointer;
+        }
+
+        .btn:active {
+            background: #ff007f;
+            color: #fff;
+            box-shadow: 0 0 15px #ff007f;
+        }
+
+        .btn-up { grid-column: 2; grid-row: 1; }
+        .btn-left { grid-column: 1; grid-row: 2; }
+        .btn-down { grid-column: 2; grid-row: 2; }
+        .btn-right { grid-column: 3; grid-row: 2; }
+
+        /* iOS Rehber Modal */
+        #iosModal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .ios-content {
+            background: #1a1c29;
+            padding: 22px;
+            border-radius: 16px;
+            border: 1px solid #ff007f;
+            max-width: 290px;
+            text-align: center;
+            box-shadow: 0 0 20px #ff007f;
+        }
+
+        .ios-content h3 { color: #00ffcc; margin-bottom: 12px; }
+        .ios-content p { font-size: 0.9rem; color: #ccc; margin-bottom: 10px; line-height: 1.4; }
+        .close-ios {
+            background: #ff007f; border: none; color: white;
+            padding: 8px 20px; border-radius: 12px; margin-top: 10px; cursor: pointer;
+            font-weight: bold;
+        }
+
+        @media (min-width: 768px) {
+            .controls { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="main-title">NEON SNAKE</h1>
+        <p class="subtitle">Sıla'nın Mobil PWA Projesi</p>
+    </header>
+
+    <!-- Dinamik Cihaz Yükleme Butonu -->
+    <div class="pwa-tools">
+        <button id="smartInstallBtn" class="dynamic-install-btn" style="display: none;" onclick="handleInstallClick()">
+            <span id="installBtnText">📲 Uygulamayı Yükle</span>
+        </button>
+    </div>
+
+    <div class="score-board">
+        <div class="score-box">Skor: <span id="score" style="color: #00ffcc;">0</span></div>
+        <div class="score-box">Level: <span id="level" style="color: #ffea00;">1</span></div>
+        <div class="score-box">En Yüksek: <span id="high-score" style="color: #ff007f;">0</span></div>
+    </div>
+
+    <div id="game-container">
+        <canvas id="snakeGame" width="300" height="300"></canvas>
+        <div id="overlay">
+            <h2 id="overlay-title" style="color: #00ffcc; text-shadow: 0 0 10px #00ffcc;">HAZIR MISIN? 🎀</h2>
+            <button id="startBtn" class="start-btn" onclick="startGame()">BAŞLA 🚀</button>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="btn btn-up" onclick="changeDir('UP')">▲</div>
+        <div class="btn btn-left" onclick="changeDir('LEFT')">◄</div>
+        <div class="btn btn-down" onclick="changeDir('DOWN')">▼</div>
+        <div class="btn btn-right" onclick="changeDir('RIGHT')">►</div>
+    </div>
+
+    <!-- iOS Bilgilendirme Modal -->
+    <div id="iosModal">
+        <div class="ios-content">
+            <h3>iPhone / iPad İçin 🍏</h3>
+            <p>1. Safari tarayıcısının altındaki <strong>Paylaş ⎋</strong> butonuna bas.</p>
+            <p>2. Listeyi kaydırıp <strong>"Ana Ekrana Ekle ➕"</strong> seçeneğine tıkla.</p>
+            <p>Uygulama telefonuna yüklenecektir!</p>
+            <button class="close-ios" onclick="closeIosModal()">Anladım 👍</button>
+        </div>
+    </div>
+
+    <script>
+        // --- LEVEL VE ARKA PLAN TEMA LİSTESİ ---
+        const THEMES = [
+            { main: '#00ffcc', tail: '#00b38f', bg: '#0b131e', canvasBg: '#101b2b', ribbon: '#ff007f' },
+            { main: '#ff007f', tail: '#b30059', bg: '#1c0914', canvasBg: '#2a0e1e', ribbon: '#00ffcc' },
+            { main: '#00bfff', tail: '#0080ff', bg: '#051424', canvasBg: '#09213b', ribbon: '#ffea00' },
+            { main: '#ffea00', tail: '#ccbb00', bg: '#1c1805', canvasBg: '#2b2509', ribbon: '#a855f7' },
+            { main: '#a855f7', tail: '#7e22ce', bg: '#140824', canvasBg: '#200e38', ribbon: '#00ffcc' },
+            { main: '#ff5722', tail: '#e64a19', bg: '#1f0a05', canvasBg: '#30110a', ribbon: '#ff007f' }
+        ];
+
+        // --- CİHAZ VE İŞLETİM SİSTEMİ TESPİT MANTIĞI ---
+        let deferredPrompt = null;
+        const smartBtn = document.getElementById('smartInstallBtn');
+        const smartBtnText = document.getElementById('installBtnText');
+
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+        // Cihaza Göre Buton Metnini Ayarla
+        if (!isStandalone) {
+            if (isIOS) {
+                smartBtnText.innerText = "🍏 iOS Ana Ekrana Ekle";
+                smartBtn.style.display = "flex";
+            } else {
+                // Windows / Android için 'beforeinstallprompt' olayı beklenir
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    deferredPrompt = e;
+                    
+                    const isDesktop = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                    if (isDesktop) {
+                        smartBtnText.innerText = "💻 Masaüstüne İndir (Kısayol)";
+                    } else {
+                        smartBtnText.innerText = "📲 Uygulamayı Yükle";
+                    }
+                    smartBtn.style.display = "flex";
+                });
+            }
+        }
+
+        function handleInstallClick() {
+            if (isIOS) {
+                openIosModal();
+            } else if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choice) => {
+                    if (choice.outcome === 'accepted') {
+                        smartBtn.style.display = 'none';
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+
+        function openIosModal() { document.getElementById('iosModal').style.display = 'flex'; }
+        function closeIosModal() { document.getElementById('iosModal').style.display = 'none'; }
+
+        // --- SES EFEKTLERİ ---
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playEatSound() {
+            if (!audioCtx) return;
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playLevelUpSound() {
+            if (!audioCtx) return;
+            let notes = [400, 600, 800, 1000];
+            notes.forEach((freq, idx) => {
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.08);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime + idx * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + idx * 0.08 + 0.08);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + idx * 0.08);
+                osc.stop(audioCtx.currentTime + idx * 0.08 + 0.08);
+            });
+        }
+
+        function playExplodeSound() {
+            if (!audioCtx) return;
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(250, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.5);
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
+        }
+
+        function playClickSound() {
+            if (!audioCtx) return;
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.05);
+        }
+
+        // --- DEĞİŞKENLER VE SİMÜLASYON ---
+        const canvas = document.getElementById("snakeGame");
+        const ctx = canvas.getContext("2d");
+        const overlay = document.getElementById("overlay");
+        const overlayTitle = document.getElementById("overlay-title");
+        const startBtn = document.getElementById("startBtn");
+        const mainTitle = document.getElementById("main-title");
+
+        const grid = 15;
+        const count = canvas.width / grid;
+
+        let score = 0;
+        let level = 1;
+        let foodEatenCount = 0;
+        let gameSpeed = 160;
+        let highScore = localStorage.getItem("neon_snake_hs") || 0;
+        document.getElementById("high-score").innerText = highScore;
+
+        let snake = [];
+        let food = { x: 5, y: 5 };
+        let dx = 1;
+        let dy = 0;
+        let gameTimeout = null;
+        let isRunning = false;
+        let particles = [];
+        let bgStars = [];
+
+        for (let i = 0; i < 30; i++) {
+            bgStars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2 + 0.5,
+                alpha: Math.random()
+            });
+        }
+
+        function getCurrentTheme() {
+            const index = Math.min(level - 1, THEMES.length - 1);
+            return THEMES[index];
+        }
+
+        function updateThemeStyles() {
+            const theme = getCurrentTheme();
+            document.body.style.backgroundColor = theme.bg;
+            canvas.style.backgroundColor = theme.canvasBg;
+            canvas.style.borderColor = theme.main;
+            canvas.style.boxShadow = `0 0 25px ${theme.main}`;
+            mainTitle.style.color = theme.main;
+            mainTitle.style.textShadow = `0 0 10px ${theme.main}, 0 0 20px ${theme.main}`;
+        }
+
+        // --- PARÇALANMA EFEKTİ ---
+        function createExplosion() {
+            particles = [];
+            const currentTheme = getCurrentTheme();
+            snake.forEach(segment => {
+                const px = segment.x * grid + grid / 2;
+                const py = segment.y * grid + grid / 2;
+                for (let i = 0; i < 8; i++) {
+                    particles.push({
+                        x: px,
+                        y: py,
+                        vx: (Math.random() - 0.5) * 8,
+                        vy: (Math.random() - 0.5) * 8,
+                        size: Math.random() * 4 + 2,
+                        alpha: 1,
+                        color: Math.random() > 0.3 ? currentTheme.main : currentTheme.ribbon
+                    });
+                }
+            });
+        }
+
+        function updateAndDrawParticles() {
+            particles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 0.025;
+
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, p.alpha);
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = p.color;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                if (p.alpha <= 0) particles.splice(index, 1);
+            });
+        }
+
+        // --- YILAN VE KURDELE ÇİZİMİ ---
+        function drawSnake() {
+            const len = snake.length;
+            const theme = getCurrentTheme();
+
+            snake.forEach((seg, i) => {
+                const x = seg.x * grid;
+                const y = seg.y * grid;
+                const center = grid / 2;
+
+                if (i === 0) {
+                    ctx.save();
+                    ctx.translate(x + center, y + center);
+
+                    let angle = 0;
+                    if (dx === 1) angle = 0;
+                    if (dx === -1) angle = Math.PI;
+                    if (dy === 1) angle = Math.PI / 2;
+                    if (dy === -1) angle = -Math.PI / 2;
+                    ctx.rotate(angle);
+
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = theme.main;
+                    ctx.fillStyle = theme.main;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, grid / 1.8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Gözler
+                    ctx.fillStyle = "#12131c";
+                    ctx.beginPath();
+                    ctx.arc(2, -3, 2.5, 0, Math.PI * 2);
+                    ctx.arc(2, 3, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = "#ffffff";
+                    ctx.beginPath();
+                    ctx.arc(3, -3, 1, 0, Math.PI * 2);
+                    ctx.arc(3, 3, 1, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Dil
+                    ctx.strokeStyle = theme.ribbon;
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(grid / 2, 0);
+                    ctx.lineTo(grid / 2 + 5, 0);
+                    ctx.lineTo(grid / 2 + 8, -2);
+                    ctx.moveTo(grid / 2 + 5, 0);
+                    ctx.lineTo(grid / 2 + 8, 2);
+                    ctx.stroke();
+
+                    // Sevimli Minik Kurdele
+                    ctx.save();
+                    ctx.translate(-2, -grid / 2.2);
+                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = theme.ribbon;
+                    ctx.fillStyle = theme.ribbon;
+
+                    ctx.beginPath();
+                    ctx.ellipse(-3, -1, 3.5, 2.2, -Math.PI / 6, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.ellipse(3, -1, 3.5, 2.2, Math.PI / 6, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.moveTo(-1, 0); ctx.lineTo(-4, 4); ctx.lineTo(-2, 4); ctx.closePath(); ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.moveTo(1, 0); ctx.lineTo(4, 4); ctx.lineTo(2, 4); ctx.closePath(); ctx.fill();
+
+                    ctx.fillStyle = "#ffffff";
+                    ctx.beginPath(); ctx.arc(0, -1, 1.5, 0, Math.PI * 2); ctx.fill();
+
+                    ctx.restore();
+                    ctx.restore();
+
+                } else if (i === len - 1) {
+                    const prevSeg = snake[i - 1];
+                    ctx.save();
+                    ctx.translate(x + center, y + center);
+
+                    let tdx = prevSeg.x - seg.x;
+                    let tdy = prevSeg.y - seg.y;
+                    let angle = Math.atan2(tdy, tdx);
+                    ctx.rotate(angle);
+
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = theme.main;
+                    ctx.fillStyle = theme.tail;
+                    ctx.beginPath();
+                    ctx.moveTo(grid / 2, 0);
+                    ctx.lineTo(-grid / 2, -grid / 3);
+                    ctx.lineTo(-grid / 2, grid / 3);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    ctx.restore();
+
+                } else {
+                    ctx.save();
+                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = theme.main;
+                    ctx.fillStyle = theme.main;
+                    
+                    ctx.beginPath();
+                    ctx.roundRect(x + 1, y + 1, grid - 2, grid - 2, 5);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            });
+        }
+
+        // --- OYUN DÖNGÜSÜ ---
+        function startGame() {
+            initAudio();
+            playClickSound();
+            resetGame();
+            overlay.style.display = "none";
+            isRunning = true;
+            gameLoop();
+        }
+
+        function gameLoop() {
+            if (!isRunning) {
+                const theme = getCurrentTheme();
+                ctx.fillStyle = theme.canvasBg;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                updateAndDrawParticles();
+                if (particles.length > 0) {
+                    requestAnimationFrame(gameLoop);
+                }
+                return;
+            }
+
+            draw();
+            gameTimeout = setTimeout(gameLoop, gameSpeed);
+        }
+
+        function draw() {
+            const theme = getCurrentTheme();
+
+            ctx.fillStyle = theme.canvasBg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            bgStars.forEach(star => {
+                star.alpha += (Math.random() - 0.5) * 0.05;
+                if (star.alpha < 0.1) star.alpha = 0.1;
+                if (star.alpha > 0.8) star.alpha = 0.8;
+
+                ctx.save();
+                ctx.globalAlpha = star.alpha;
+                ctx.fillStyle = theme.main;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            ctx.save();
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = theme.ribbon;
+            ctx.fillStyle = theme.ribbon;
+            ctx.beginPath();
+            ctx.arc(food.x * grid + grid / 2, food.y * grid + grid / 2, grid / 2.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(food.x * grid + grid / 3, food.y * grid + grid / 3, grid / 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            let headX = snake[0].x + dx;
+            let headY = snake[0].y + dy;
+
+            if (headX < 0) headX = count - 1;
+            if (headX >= count) headX = 0;
+            if (headY < 0) headY = count - 1;
+            if (headY >= count) headY = 0;
+
+            const newHead = { x: headX, y: headY };
+
+            if (checkCollision(newHead)) {
+                playExplodeSound();
+                createExplosion();
+                gameOver();
+                return;
+            }
+
+            snake.unshift(newHead);
+
+            if (newHead.x === food.x && newHead.y === food.y) {
+                playEatSound();
+                score += 10;
+                foodEatenCount++;
+
+                if (foodEatenCount % 5 === 0) {
+                    level++;
+                    playLevelUpSound();
+                    gameSpeed = Math.max(60, gameSpeed - 12);
+                    document.getElementById("level").innerText = level;
+                    updateThemeStyles();
+                }
+
+                document.getElementById("score").innerText = score;
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem("neon_snake_hs", highScore);
+                    document.getElementById("high-score").innerText = highScore;
+                }
+                generateFood();
+            } else {
+                snake.pop();
+            }
+
+            drawSnake();
+        }
+
+        function checkCollision(head) {
+            return snake.some(segment => segment.x === head.x && segment.y === head.y);
+        }
+
+        function generateFood() {
+            food = {
+                x: Math.floor(Math.random() * count),
+                y: Math.floor(Math.random() * count)
+            };
+        }
+
+        function changeDir(dir) {
+            if (!isRunning) return;
+            playClickSound();
+            if (dir === 'UP' && dy === 0) { dx = 0; dy = -1; }
+            if (dir === 'DOWN' && dy === 0) { dx = 0; dy = 1; }
+            if (dir === 'LEFT' && dx === 0) { dx = -1; dy = 0; }
+            if (dir === 'RIGHT' && dx === 0) { dx = 1; dy = 0; }
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowUp" || e.key === "w") changeDir('UP');
+            if (e.key === "ArrowDown" || e.key === "s") changeDir('DOWN');
+            if (e.key === "ArrowLeft" || e.key === "a") changeDir('LEFT');
+            if (e.key === "ArrowRight" || e.key === "d") changeDir('RIGHT');
+        });
+
+        function gameOver() {
+            isRunning = false;
+            if (gameTimeout) clearTimeout(gameTimeout);
+            
+            overlayTitle.innerText = "PATLADIN! 💥";
+            overlayTitle.style.color = "#ff007f";
+            overlayTitle.style.textShadow = "0 0 10px #ff007f";
+            startBtn.innerText = "YENİDEN BAŞLA 🔄";
+            
+            setTimeout(() => {
+                overlay.style.display = "flex";
+            }, 600);
+        }
+
+        function resetGame() {
+            snake = [
+                { x: 10, y: 10 },
+                { x: 9, y: 10 },
+                { x: 8, y: 10 }
+            ];
+            dx = 1;
+            dy = 0;
+            score = 0;
+            level = 1;
+            foodEatenCount = 0;
+            gameSpeed = 160;
+            particles = [];
+            
+            document.getElementById("score").innerText = score;
+            document.getElementById("level").innerText = level;
+            updateThemeStyles();
+            generateFood();
+        }
+
+        // --- SERVICE WORKER KAYDI ---
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                self.addEventListener('install', (e) => self.skipWaiting());
+                self.addEventListener('fetch', (e) => {
+                    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+                });
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            navigator.serviceWorker.register(URL.createObjectURL(blob))
+                .then(() => console.log("SW Aktif!"))
+                .catch((err) => console.log("SW Hata:", err));
+        }
+    </script>
+</body>
+</html>
